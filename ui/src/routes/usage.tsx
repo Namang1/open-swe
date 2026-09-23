@@ -1090,6 +1090,8 @@ function PRMergeRateTable({
                       {modelLabel}
                     </div>
                     <div className="font-normal text-muted-foreground">
+                      {cohort.efforts.length === 1 &&
+                        `${formatEffort(cohort.efforts[0]?.effort)} · `}
                       {cohort.model_attribution_quality} attribution
                     </div>
                   </th>
