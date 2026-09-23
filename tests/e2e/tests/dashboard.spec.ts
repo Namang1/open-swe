@@ -510,7 +510,7 @@ test.describe("Slack → web handoff (real dashboard UI)", () => {
     ).toHaveCount(0);
   });
 
-  test("answers a queued follow-up after stopping a run this browser started", async ({
+  test("restores a queued follow-up after stopping a run this browser started", async ({
     page,
   }) => {
     await loginAs(page, SAME_USER);
@@ -541,12 +541,13 @@ test.describe("Slack → web handoff (real dashboard UI)", () => {
     await expect(page.getByTestId("queued-message")).toHaveCount(0, {
       timeout: 30_000,
     });
+    await expect(page.getByTestId("composer-editor")).toContainText(
+      queuedText,
+      { timeout: 30_000 },
+    );
     await expect(
       page.getByTestId("user-message").filter({ hasText: queuedText }),
-    ).toBeVisible({ timeout: 30_000 });
-    await expect(
-      page.getByText(/anything else you'd like changed/),
-    ).toBeVisible({ timeout: 30_000 });
+    ).toHaveCount(0);
   });
 
   test("stops a Slack-started run from the web app", async ({ page }) => {
