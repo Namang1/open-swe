@@ -729,14 +729,14 @@ function PRMergeRateSection({
               they have had enough time to merge.
             </p>
             <p>
-              <strong>Avg time to merge</strong> is the arithmetic mean of time
-              from PR opened to merged across merged PRs opened in the selected
+              <strong>Time to merge</strong> is the arithmetic mean of time from
+              PR opened to merged across merged PRs opened in the selected
               period. Unmerged PRs are excluded, and it shows — when a group has
               no merges.
             </p>
             <p>
-              <strong>Avg time to PR</strong> is the arithmetic mean of time
-              from opening-run start to PR creation across all PRs opened in the
+              <strong>Time to PR</strong> is the arithmetic mean of time from
+              opening-run start to PR creation across all PRs opened in the
               selected period. PRs without a valid opening-run start time are
               excluded, and it shows — when a group has none.
             </p>
@@ -816,7 +816,7 @@ function AvgTimeToPR({ cohort }: { cohort: PRMergeRateCohort }) {
       <span
         className="cursor-help rounded-sm underline decoration-dotted underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         title="Metric unavailable from this backend"
-        aria-label="Avg time to PR: metric unavailable from this backend"
+        aria-label="Time to PR: metric unavailable from this backend"
         tabIndex={0}
       >
         —
@@ -826,17 +826,7 @@ function AvgTimeToPR({ cohort }: { cohort: PRMergeRateCohort }) {
   if (cohort.avg_delivery_seconds == null) {
     return <span title="No PRs with valid timing in this group">—</span>
   }
-  return (
-    <Tooltip>
-      <TooltipTrigger className="cursor-help rounded-sm underline decoration-dotted underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-        {formatAvgDuration(cohort.avg_delivery_seconds)}
-      </TooltipTrigger>
-      <TooltipPopup className="max-w-xs">
-        Based on PRs whose opening run has a valid start time, regardless of
-        outcome; PRs with missing or invalid timing are excluded.
-      </TooltipPopup>
-    </Tooltip>
-  )
+  return <span>{formatAvgDuration(cohort.avg_delivery_seconds)}</span>
 }
 
 const PR_OUTCOME_COLUMNS: Array<SortableColumn<PROutcomesSort>> = [
@@ -866,12 +856,19 @@ const PR_OUTCOME_COLUMNS: Array<SortableColumn<PROutcomesSort>> = [
     label: "Merge rate",
     align: "right",
   },
-  { key: "avg_delivery_seconds", label: "Avg time to PR", align: "right" },
+  {
+    key: "avg_delivery_seconds",
+    label: "Time to PR",
+    align: "right",
+    tooltip:
+      "Average time from opening-run start to PR creation, regardless of outcome. PRs with missing or invalid timing are excluded.",
+  },
   {
     key: "avg_merge_seconds",
-    label: "Avg time to merge",
+    label: "Time to merge",
     align: "right",
-    tooltip: "Unmerged PRs are excluded.",
+    tooltip:
+      "Average time from PR opened to merged. Unmerged PRs are excluded.",
   },
 ]
 

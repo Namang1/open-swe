@@ -363,8 +363,8 @@ it.each([
       "Open",
       "Median distance",
       "Merge rate",
-      "Avg time to PR",
-      "Avg time to merge",
+      "Time to PR",
+      "Time to merge",
     ])
 
     const openCount = within(row).getByRole("button", { name: "3" })
@@ -398,11 +398,23 @@ it.each([
     ).toBeTruthy()
 
     expect(within(row).queryByRole("button", { name: "1d" })).toBeNull()
-    const avgTime = within(table).getByText("Avg time to merge")
+    const avgTime = within(table).getByText("Time to merge")
     act(() => avgTime.focus())
-    expect(await screen.findByText("Unmerged PRs are excluded.")).toBeTruthy()
+    expect(
+      await screen.findByText(/Average time from PR opened to merged/)
+    ).toBeTruthy()
     act(() => avgTime.blur())
     fireEvent.keyDown(avgTime, { key: "Escape" })
+
+    const timeToPR = within(table).getByText("Time to PR")
+    act(() => timeToPR.focus())
+    expect(
+      await screen.findByText(
+        /Average time from opening-run start to PR creation/
+      )
+    ).toBeTruthy()
+    act(() => timeToPR.blur())
+    fireEvent.keyDown(timeToPR, { key: "Escape" })
 
     fireEvent.click(screen.getByText("How these numbers work"))
     expect(
