@@ -1,6 +1,6 @@
 # Files
 
-- [Authentication, Authorization, and Secret Boundaries](auth-and-security.md) - How Open SWE authenticates dashboard and automation users, resolves GitHub authority, verifies inbound requests, encrypts stored credentials, and keeps secrets out of sandboxes.
-- [Models, Profiles, and Instructions](models-profiles-instructions.md) - Model and reasoning selection, fallback, gateway construction, and the team, profile, and thread layers that govern agent runs. Explains how repository, environment, and sender instructions are persisted and placed into prompts.
-- [Threads, Durable Runs, and State](threads-and-state.md) - How Open SWE identifies durable LangGraph conversations, constructs follow-up inputs, owns thread metadata and Store records, and preserves sandbox continuity across product surfaces.
-- [Tool Catalog and Authorization](tools.md) - How Open SWE exports curated tools, wires graph-specific and deferred tool surfaces, and enforces authorization and plan-mode controls. Use this page when safely adding or changing an agent capability.
+- [Identity, Authorization, and Credential Boundaries](auth-and-security.md) - Authentication and authorization boundaries for dashboard users, inbound integrations, GitHub credentials, repository workspaces, and sandboxed execution.
+- [Model, Profile, and Instruction Resolution](models-profiles-instructions.md) - Explains how workspace defaults, profiles, thread snapshots, explicit run selections, adaptive routing, and provider settings determine an agent run. Covers persistence boundaries and the repository, workspace, user, and AGENTS.md instruction layers.
+- [Threads, Runs, and Durable State](threads-and-state.md) - How Open SWE gives conversations a durable identity, creates checkpointed LangGraph runs, propagates configuration and metadata, and retains Store and sandbox state across product surfaces.
+- [Tool Surface and Capability Gating](tools.md) - How Open SWE selects static, sandbox, personal, MCP, and administrative tool capabilities for each agent run. Covers source and mode filtering, deferred integration loading, credential boundaries, and runtime safety guards.

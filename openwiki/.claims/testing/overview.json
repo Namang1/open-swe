@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:75920d28bad5b192afd797dfb84208215370aa54fa04f783dbddc72b010939e9",
+  "pageVersion": "sha256:63f0d2e1ab1e6587b9a72fed0cc821a542812b50540438a5189958dc4d5ac0c0",
   "claims": [
     {
       "id": "claim_9a77e9c5301a46b8bbd02832b9de5a90",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://pyproject.toml",
-          "version": "repo-file-v1:sha256:6a4ff3c5410f45c156688f8f18dee9c03925403a45b034352810673cc679ad98"
+          "version": "repo-file-v1:sha256:6da21fa96ed1cc3d7e5c13e8facc39ab4a6e9caf5dbe73b92741c942a38d08e2"
         }
       ]
     },
@@ -18,21 +18,21 @@
       "evidence": [
         {
           "resource": "repo://pyproject.toml",
-          "version": "repo-file-v1:sha256:6a4ff3c5410f45c156688f8f18dee9c03925403a45b034352810673cc679ad98"
+          "version": "repo-file-v1:sha256:6da21fa96ed1cc3d7e5c13e8facc39ab4a6e9caf5dbe73b92741c942a38d08e2"
         }
       ]
     },
     {
       "id": "claim_51ddbe6a89c1461d9c078e3e373030cf",
-      "statement": "Test tooling (pytest, pytest-asyncio, Ruff, ty, Pygments) is declared in the dev optional-dependency group and installed via `make install` which runs `uv sync --extra dev`.",
+      "statement": "Pytest, pytest-asyncio, Ruff, and ty are declared in the dev optional-dependency group and installed via `make install`, which runs `uv sync --extra dev`; Pygments is a runtime dependency.",
       "evidence": [
         {
           "resource": "repo://Makefile",
-          "version": "repo-file-v1:sha256:1f1adc33a073a0642af282d579fc461f86853f4a522bf69d6ee4d63c35c7787d"
+          "version": "repo-file-v1:sha256:2b2e7300f2d33a4233a0acc4ee5e76420e88a9dda992a4a2e84f4cf7ec8a4ce2"
         },
         {
           "resource": "repo://pyproject.toml",
-          "version": "repo-file-v1:sha256:6a4ff3c5410f45c156688f8f18dee9c03925403a45b034352810673cc679ad98"
+          "version": "repo-file-v1:sha256:6da21fa96ed1cc3d7e5c13e8facc39ab4a6e9caf5dbe73b92741c942a38d08e2"
         }
       ]
     },
@@ -42,7 +42,7 @@
       "evidence": [
         {
           "resource": "repo://tests/conftest.py",
-          "version": "repo-file-v1:sha256:e12e2fdd4702568c7428d0f1726e3a56654431d0738e495ae733a1f4a600ca94"
+          "version": "repo-file-v1:sha256:a0c8504459c241650b282a87c8485f99edb65debef20d7bc3037151ad6a66e52"
         }
       ]
     },
@@ -52,7 +52,7 @@
       "evidence": [
         {
           "resource": "repo://tests/conftest.py",
-          "version": "repo-file-v1:sha256:e12e2fdd4702568c7428d0f1726e3a56654431d0738e495ae733a1f4a600ca94"
+          "version": "repo-file-v1:sha256:a0c8504459c241650b282a87c8485f99edb65debef20d7bc3037151ad6a66e52"
         }
       ]
     },
@@ -62,7 +62,7 @@
       "evidence": [
         {
           "resource": "repo://tests/conftest.py",
-          "version": "repo-file-v1:sha256:e12e2fdd4702568c7428d0f1726e3a56654431d0738e495ae733a1f4a600ca94"
+          "version": "repo-file-v1:sha256:a0c8504459c241650b282a87c8485f99edb65debef20d7bc3037151ad6a66e52"
         }
       ]
     },
@@ -72,11 +72,11 @@
       "evidence": [
         {
           "resource": "repo://AGENTS.md",
-          "version": "repo-file-v1:sha256:1d76197da0a0227d4bf93caeff444a5075a90a63c87f5019fbf89c50f164f83d"
+          "version": "repo-file-v1:sha256:bfd4ad751924ad65bbdc243f6131b7163ce0ad7ee1cd9c0cdf1093573b10af04"
         },
         {
           "resource": "repo://Makefile",
-          "version": "repo-file-v1:sha256:1f1adc33a073a0642af282d579fc461f86853f4a522bf69d6ee4d63c35c7787d"
+          "version": "repo-file-v1:sha256:2b2e7300f2d33a4233a0acc4ee5e76420e88a9dda992a4a2e84f4cf7ec8a4ce2"
         }
       ]
     },
@@ -86,7 +86,7 @@
       "evidence": [
         {
           "resource": "repo://Makefile",
-          "version": "repo-file-v1:sha256:1f1adc33a073a0642af282d579fc461f86853f4a522bf69d6ee4d63c35c7787d"
+          "version": "repo-file-v1:sha256:2b2e7300f2d33a4233a0acc4ee5e76420e88a9dda992a4a2e84f4cf7ec8a4ce2"
         }
       ]
     },
@@ -96,11 +96,11 @@
       "evidence": [
         {
           "resource": "repo://Makefile",
-          "version": "repo-file-v1:sha256:1f1adc33a073a0642af282d579fc461f86853f4a522bf69d6ee4d63c35c7787d"
+          "version": "repo-file-v1:sha256:2b2e7300f2d33a4233a0acc4ee5e76420e88a9dda992a4a2e84f4cf7ec8a4ce2"
         },
         {
           "resource": "repo://pyproject.toml",
-          "version": "repo-file-v1:sha256:6a4ff3c5410f45c156688f8f18dee9c03925403a45b034352810673cc679ad98"
+          "version": "repo-file-v1:sha256:6da21fa96ed1cc3d7e5c13e8facc39ab4a6e9caf5dbe73b92741c942a38d08e2"
         }
       ]
     },
@@ -110,11 +110,11 @@
       "evidence": [
         {
           "resource": "repo://package.json",
-          "version": "repo-file-v1:sha256:85ff550163c48dcb3e9d2ac1a9c2558cbd366fd833a1ea789c66ea62877be443"
+          "version": "repo-file-v1:sha256:ad350eb725ddd3bcbc9896fd3319e543bdae8de113dfb146a5e5da5c7f9e40d0"
         },
         {
           "resource": "repo://tests/e2e/README.md",
-          "version": "repo-file-v1:sha256:25804f68296219bcdadd846a23ad8650eeab90d20a980a26a2cc939906fc35c0"
+          "version": "repo-file-v1:sha256:b37daa7c7803e285e2ba930a341ad4f85ab0708534eb6615785ece397258ba91"
         },
         {
           "resource": "repo://tests/e2e/package.json",
@@ -128,7 +128,7 @@
       "evidence": [
         {
           "resource": "repo://tests/e2e/README.md",
-          "version": "repo-file-v1:sha256:25804f68296219bcdadd846a23ad8650eeab90d20a980a26a2cc939906fc35c0"
+          "version": "repo-file-v1:sha256:b37daa7c7803e285e2ba930a341ad4f85ab0708534eb6615785ece397258ba91"
         },
         {
           "resource": "repo://tests/e2e/tests/full_flow.spec.ts",
@@ -142,19 +142,19 @@
       "evidence": [
         {
           "resource": "repo://tests/e2e/README.md",
-          "version": "repo-file-v1:sha256:25804f68296219bcdadd846a23ad8650eeab90d20a980a26a2cc939906fc35c0"
+          "version": "repo-file-v1:sha256:b37daa7c7803e285e2ba930a341ad4f85ab0708534eb6615785ece397258ba91"
         },
         {
           "resource": "repo://tests/e2e/fake_llm.py",
-          "version": "repo-file-v1:sha256:8a386531e01339f5eabebb20046d277fa65463800b4c86156ee627064b8a7bb5"
+          "version": "repo-file-v1:sha256:c875fea9b1f13be56721e78dde2be52ea6b62934c50aed9570f99f163feb1aed"
         },
         {
           "resource": "repo://tests/e2e/fakes.py",
-          "version": "repo-file-v1:sha256:c4b8854658a210e1bc99007fa635555ccec52327e36876782a9d2ea466ad1185"
+          "version": "repo-file-v1:sha256:b71a742c728b823fcef5ac57329c668b3bc82188456ac33397a14c0520793d87"
         },
         {
           "resource": "repo://tests/e2e/patches.py",
-          "version": "repo-file-v1:sha256:4435a4f3db5704112880f22751e8b6db788a4816c3ca45d10626295e6e63eb72"
+          "version": "repo-file-v1:sha256:757a812cf6e1226e2b32f86a72d3c028ff5908e7e199817050394783b1c851e6"
         }
       ]
     },
@@ -164,7 +164,7 @@
       "evidence": [
         {
           "resource": "repo://tests/e2e/README.md",
-          "version": "repo-file-v1:sha256:25804f68296219bcdadd846a23ad8650eeab90d20a980a26a2cc939906fc35c0"
+          "version": "repo-file-v1:sha256:b37daa7c7803e285e2ba930a341ad4f85ab0708534eb6615785ece397258ba91"
         }
       ]
     },
@@ -174,7 +174,7 @@
       "evidence": [
         {
           "resource": "repo://tests/e2e/README.md",
-          "version": "repo-file-v1:sha256:25804f68296219bcdadd846a23ad8650eeab90d20a980a26a2cc939906fc35c0"
+          "version": "repo-file-v1:sha256:b37daa7c7803e285e2ba930a341ad4f85ab0708534eb6615785ece397258ba91"
         },
         {
           "resource": "repo://tests/e2e/playwright.config.ts",
@@ -188,19 +188,19 @@
       "evidence": [
         {
           "resource": "repo://desktop/package.json",
-          "version": "repo-file-v1:sha256:9e32829ce8dbe938b0183b27f62da576f1a6103de152a69997ff1f87027a9c38"
+          "version": "repo-file-v1:sha256:5168fdd55e831a969cb1e03c7f9edf7f9b1575c84916405135570eca37cb7721"
         },
         {
           "resource": "repo://package.json",
-          "version": "repo-file-v1:sha256:85ff550163c48dcb3e9d2ac1a9c2558cbd366fd833a1ea789c66ea62877be443"
+          "version": "repo-file-v1:sha256:ad350eb725ddd3bcbc9896fd3319e543bdae8de113dfb146a5e5da5c7f9e40d0"
         },
         {
           "resource": "repo://turbo.json",
-          "version": "repo-file-v1:sha256:2baddedda518d07ffac1f38d843cdb9bf2cb068b0cd2a241a571a718f8462878"
+          "version": "repo-file-v1:sha256:e601c6aeebd2b18f6e570c2736d36beaebeab6001cc3a851bba4b4d96e8bece0"
         },
         {
           "resource": "repo://ui/package.json",
-          "version": "repo-file-v1:sha256:255dd35a1c97c11cb6df943917f4253f40ebb564e1bd7158e71195b45676b082"
+          "version": "repo-file-v1:sha256:7e19b5139a12faa19bbd66f73dd92a14678262533883d40e77f30324da1ffe29"
         }
       ]
     },
@@ -224,7 +224,7 @@
       "evidence": [
         {
           "resource": "repo://tests/e2e/tests/desktop.spec.ts",
-          "version": "repo-file-v1:sha256:b88e21c2a84ae15f268e2763f93ec98e4e5683e90ddc54c2e18f3106b95995e4"
+          "version": "repo-file-v1:sha256:b310165710d35433376f4fc6b2b59cc94a56f3be921f49ae1274ea782ce87b60"
         }
       ]
     },
@@ -244,7 +244,7 @@
       "evidence": [
         {
           "resource": "repo://tests/sandbox/test_sandbox_state.py",
-          "version": "repo-file-v1:sha256:704700326ac575264e748a198dc1aef627d6cfc9fbe3e51d0728548a44e1e46e"
+          "version": "repo-file-v1:sha256:bebb9cce79127aad20654b8ae1971a52986281dca305d2c03efb3ffd8bb6923f"
         }
       ]
     },
@@ -254,7 +254,7 @@
       "evidence": [
         {
           "resource": "repo://tests/e2e/tests/desktop.spec.ts",
-          "version": "repo-file-v1:sha256:b88e21c2a84ae15f268e2763f93ec98e4e5683e90ddc54c2e18f3106b95995e4"
+          "version": "repo-file-v1:sha256:b310165710d35433376f4fc6b2b59cc94a56f3be921f49ae1274ea782ce87b60"
         }
       ]
     },
@@ -264,11 +264,11 @@
       "evidence": [
         {
           "resource": "repo://tests/e2e/README.md",
-          "version": "repo-file-v1:sha256:25804f68296219bcdadd846a23ad8650eeab90d20a980a26a2cc939906fc35c0"
+          "version": "repo-file-v1:sha256:b37daa7c7803e285e2ba930a341ad4f85ab0708534eb6615785ece397258ba91"
         },
         {
           "resource": "repo://tests/e2e/harness.py",
-          "version": "repo-file-v1:sha256:32e58b95ad959129b17559790d370ed5903c54bd4fe2717df949ac1d113d2e05"
+          "version": "repo-file-v1:sha256:239fa4d6671fde2fdd0eef1b045d56418364fe95b7bf9bab5a96ae301b64201c"
         }
       ]
     },
@@ -278,7 +278,7 @@
       "evidence": [
         {
           "resource": "repo://tests/agent/test_agent_assembly_context.py",
-          "version": "repo-file-v1:sha256:a99b1f9f5092164c751fa8d1cf746f30dd34ef569416761073f724d74d87c4df"
+          "version": "repo-file-v1:sha256:145c963d21bc9b2ce395dfcea501f25749350f16169d4e637aebfdf4976d0d7e"
         }
       ]
     },
@@ -288,7 +288,7 @@
       "evidence": [
         {
           "resource": "repo://tests/conftest.py",
-          "version": "repo-file-v1:sha256:e12e2fdd4702568c7428d0f1726e3a56654431d0738e495ae733a1f4a600ca94"
+          "version": "repo-file-v1:sha256:a0c8504459c241650b282a87c8485f99edb65debef20d7bc3037151ad6a66e52"
         }
       ]
     },
@@ -308,13 +308,43 @@
       "evidence": [
         {
           "resource": "repo://tests/webhooks/test_completion_webhook.py",
-          "version": "repo-file-v1:sha256:70779e22596916b0bfbd9b3415925b57bb2060c9825030ad46e3bb46d5c5bee4"
+          "version": "repo-file-v1:sha256:616b0434732f2c76e3f4f5feefd7c655c858090cd6358a04f062708de8eacd15"
+        }
+      ]
+    },
+    {
+      "id": "claim_9496219fa77e40fbadc426cbe6f3ddaa",
+      "statement": "The registry_db fixture creates a unique migrated PostgreSQL schema, redirects the production database engine to it, then drops and disposes it; it skips when TEST_ANALYTICS_POSTGRES_URI is absent, while registry_db_if_available supports testing the unconfigured path.",
+      "evidence": [
+        {
+          "resource": "repo://tests/conftest.py#L143-L196",
+          "version": "repo-lines-v1:sha256:30d1b73e0b6672c91fdfee0ad67f5532645b6cc3185a8248b989ff9acd81c0d3:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyNjVhZWFhY2Q1OWQ4MzEyZGM5NTJiYjg4NzM4ZGVhY2MyMDc5NWQ4MTg0MTA3NjI3OTJjZTA3ODQ2ZTc2MjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxMWVmMjVlM2RlYjQ5ZDliZTEzZGUyYTVlMzk3OGY1MTA2M2FkYjViMDg2ZmE1MTdmZjU4YzJiYmYyYmY0MDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBjZTQyNmM2MTBhZGQ2MzMzOTcyYzVlMzU1OTIyOGE0N2UxMTMwNmQyY2UwYzhjZjU3ZTAxNWI4ZWVjOTRkOWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgxYzE0MjZiZWE3ZmFiYTA1YTEyYzFlMWM4NjBkYTY3YzYxNzM4ZmZjY2NjYTRmNjc2ZTRiOTI2ZGVhNjZlMDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a5bf04e3553b4457b0aad7e084efa8e2",
+      "statement": "post_signed_github_webhook sends a deterministically serialized, HMAC-signed delivery to the real ASGI GitHub webhook route using the current test event loop, avoiding TestClient's separate-loop incompatibility with workspace-backed database routes.",
+      "evidence": [
+        {
+          "resource": "repo://tests/conftest.py#L112-L140",
+          "version": "repo-lines-v1:sha256:3eb750943002db35700b5ec025561a1baeea1b104c5f967549e0ccb0599a3078:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmODdmYmNlNTM2MGYyMzNhMGI0Y2U4YmMxNzhkYjUzMWM2NzdlNmQwNjIyNTFhMTEyMzcxZjg5NGIzZjVhMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRhZjAwZmYxZDM0MjU2YWNhZmMxM2MwYmNiNjViYzJmM2Y4N2ExZGY5ZjU0ZjRlYWM0ZTkwMzQ4ZjJjOTFmZDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2MGFiYzdiNTE2NTRjNDEwNjBmZTY1YzYwMDIzNDZlNGI5MGIyYmNlZTNkY2VjMGQ1ZTVhZjQyMjUxM2Y0MjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3ZWYzM2IxOTMyYjFjMThkMGFjZWVkYjYwM2E1MjRkZjg0NjBmOGM3MjI1YTA5NGU5YmJkNTY1YmQ3ZmYzMDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_27d4af0f694d498ca62ac153bb2f6471",
+      "statement": "Autouse pytest cleanup clears both SANDBOX_BACKENDS and SANDBOX_CONNECTIONS before and after each test so a sandbox handle cannot leak from one thread test into another.",
+      "evidence": [
+        {
+          "resource": "repo://tests/conftest.py#L248-L256",
+          "version": "repo-lines-v1:sha256:41573a94f2bbfa169cd0df4270f6b0d533d16225cf7dce723c0abe0a8d753072:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmYwODY2ZjQwMTFlNTg1ZmZjMDkwOTJlZGYwODMyZTE3YjUyZjRjOTBjNGNhMGI0MmRjZmEwNTBmYTM3NWI1YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTYyNDMxYzI0NzNhZGRiMTkzNjg2ZjdhYzM0MmQzNzk0Mjc0ZGY1MmE0MDMzYTBiYWUwNzkxMzU4ZTUxYzJmOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzg1NmUxYTFjYTZmNDRlNmIwNDdlNDU5NmI1MDk5ZGQ1ZDdlYzNjN2IyOTBiNjA1YjNjYjY5YzMzOTgwMWI2YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWVmMTFjOWI3MTY3YzBhZGM0MmZlYTg1NGFiNjM0OTk3NzA4MTRiMGU3MTgxMDNhOWVjMGY5YmU3YWY2OTk3OSJ9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.4.2",
-    "at": "2026-09-08T08:15:30.533Z"
+    "at": "2026-09-24T08:16:16.200Z"
   }
 }

@@ -1,28 +1,30 @@
 ---
-type: tool catalog and authorization model
-title: Tool Catalog and Authorization
-description: How Open SWE exports curated tools, wires graph-specific and deferred tool surfaces, and enforces authorization and plan-mode controls. Use this page when safely adding or changing an agent capability.
-tags: [tools, agent, authorization, integrations, plan-mode, automation, reviewer]
+type: tool capability architecture
+title: Tool Surface and Capability Gating
+description: How Open SWE selects static, sandbox, personal, MCP, and administrative tool capabilities for each agent run. Covers source and mode filtering, deferred integration loading, credential boundaries, and runtime safety guards.
+tags: [tools, agent, authorization, sandbox, mcp, integrations, middleware]
 verified:
   - by: openwiki/0.4.2
-    at: 2026-09-08T08:15:30.533Z
+    at: 2026-09-24T08:16:16.200Z
 sources:
   - id: openwiki-source-63ebc853556c1b852ed80aff
     resource: repo://agent/analyzer.py
   - id: openwiki-source-921ec88ab63280d28b3dddb5
     resource: repo://agent/chat.py
+  - id: openwiki-source-941341430e1d08d8e7e54dfe
+    resource: repo://agent/dashboard/user_credentials.py
   - id: openwiki-source-9103280889fa6c4d9c5bb0df
     resource: repo://agent/middleware/dynamic_tools.py
-  - id: openwiki-source-f26d060fb4408e89b50964a5
-    resource: repo://agent/middleware/plan_mode.py
+  - id: openwiki-source-a173dfbb2b1cf20f148d65ef
+    resource: repo://agent/middleware/exclude_tools.py
+  - id: openwiki-source-3d6d2704e3f7fa58a6207393
+    resource: repo://agent/middleware/pr_creation_guard.py
+  - id: openwiki-source-c53f5f816c45a89d9453ccd6
+    resource: repo://agent/middleware/workflow_push_guard.py
   - id: openwiki-source-276ab38291eb5741b4c2141c
     resource: repo://agent/reviewer.py
   - id: openwiki-source-856ade03ef31ac38e1347f7c
     resource: repo://agent/server.py
-  - id: openwiki-source-e4901f6a09c372487ff11987
-    resource: repo://agent/tool_loaders/corridor_mcp.py
-  - id: openwiki-source-6de9e7b7779ea6aada343f2a
-    resource: repo://agent/tool_loaders/langsmith.py
   - id: openwiki-source-2cd7e2018ae35c5972204803
     resource: repo://agent/tool_loaders/notion_mcp.py
   - id: openwiki-source-a46a7cd7d143369055b05580
@@ -33,121 +35,117 @@ sources:
     resource: repo://agent/tools/automations.py
   - id: openwiki-source-dcf576fc340e5f1a2bc3f5f4
     resource: repo://agent/tools/read_user_settings.py
-  - id: openwiki-source-fef236c0a2029fbda76955d6
-    resource: repo://tests/agent/test_plan_mode.py
-generated: { by: "openwiki/0.4.2", at: "2026-09-08T08:15:30.533Z" }
+  - id: openwiki-source-e183a9ef71582b9a5e0d7634
+    resource: repo://tests/agent/test_workflow_push_guard.py
+  - id: openwiki-source-9bdb0b2eb3f539b9ff213426
+    resource: repo://tests/github/test_pr_creation_guard.py
+generated: { by: "openwiki/0.4.2", at: "2026-09-24T08:16:16.200Z" }
 ---
 
-# Tool Catalog and Authorization
+# Tool Surface and Capability Gating
 
-Open SWE does not treat the tools package as a universal capability grant. A tool must be exported, deliberately wired into a particular graph, and—where appropriate—protected again at its own boundary. This separation keeps credentials, administrative actions, and graph-specific operations out of tool surfaces that do not need them.
+Open SWE treats the importable tool catalog as distinct from an executable tool surface. A capability becomes available only after its graph factory wires it in, run context passes source, identity, and mode gates, and middleware permits the call. Sensitive operations additionally enforce their own authorization or approval boundary.
 
-## Catalog versus executable surface
+## Capability selection and gates
 
-`agent.tools` is the curated export facade. `_TOOL_MODULES` maps public names to their implementation modules; access lazily imports and caches the export. Its module subclass deliberately prefers a public export over an identically named submodule that `importlib` placed on the package. Several names can share an implementation, such as the two background-task aliases and the automation operations.
-
-The facade includes local curated modules as well as selected GitHub, Linear, and Slack tools. Exporting a name only makes it importable: each graph factory supplies its own list to `create_deep_agent`.
-
-Deep Agents separately supplies filesystem and delegation tools: `read_file`, `write_file`, `edit_file`, `delete`, `ls`, `glob`, `grep`, `execute`, and `task`. `DEEP_AGENT_TOOL_NAMES` reserves these names, preventing static or dynamic integrations from colliding with them. The main graph hides `grep`; stop-summary mode additionally hides the mutating filesystem, shell, and delegation built-ins.
+Authorization and mode gates happen before tool families are enumerated. `get_agent` derives admin access from the runtime actor rather than trusting a client-supplied flag; it fails closed when private-thread visibility cannot be read. A missing credential identity removes personal settings and skills tools. Slack tools require trusted source context and a valid channel or thread; channel-history reading additionally requires a private thread. Desktop local runs and stop-summary runs replace, rather than merely trim, the normal static surface.
 
 ```mermaid
 flowchart TD
-    Catalog["agent.tools lazy catalog"]
-    Main["Main coding graph"]
-    Reviewer["Reviewer graph"]
-    Analyzer["Analyzer graph"]
-    Chat["Read-only PR chat graph"]
-    Builtins["Deep Agents built-ins"]
-    Deferred["Deferred integration groups"]
-
-    Catalog --> Main
-    Catalog --> Reviewer
-    Catalog --> Analyzer
-    Catalog --> Chat
-    Builtins --> Main
-    Builtins --> Reviewer
-    Builtins --> Analyzer
-    Builtins --> Chat
-    Deferred --> Main
+    Start["Build main agent"] --> Identity{"Trusted identity and source"}
+    Identity -->|"No credential identity"| NoPersonal["Remove personal tools"]
+    Identity -->|"Admin actor and admin thread"| Admin["Add admin tools"]
+    Identity -->|"Slack context"| Slack["Keep eligible Slack tools"]
+    Identity -->|"Other source"| NoSlack["Remove Slack tools"]
+    NoPersonal --> Mode{"Run mode"}
+    Admin --> Mode
+    Slack --> Mode
+    NoSlack --> Mode
+    Mode -->|"Desktop local"| Local["Web-only surface"]
+    Mode -->|"Stop summary"| Summary["Slack read and reply surface"]
+    Mode -->|"Normal"| Normal["Static tools and eligible integrations"]
+    Normal --> Middleware["Exclusion and call guards"]
+    Local --> Middleware
+    Summary --> Middleware
 ```
 
-This diagram distinguishes the import catalog from the graph-specific execution surfaces; deferred integrations are attached only to eligible main-agent runs.
+This selection flow shows that graph wiring is necessary but not sufficient: the final model-visible set is shaped by trusted run state and middleware.
 
-## Main coding agent assembly
+`agent.tools` is a lazy public facade. `_TOOL_MODULES` maps exported names to local or selected integration modules, imports an export on first access, and caches it. Its custom module type prevents an imported submodule with the same name from shadowing the intended public export. Exporting a name does not grant it to every graph.
 
-`agent.server:get_agent` constructs the normal `static_tools` list. It includes web access; plan lifecycle; background execution; user instructions and skills; Linear; dashboard thread, notification, and baby-sit operations; PR creation and review request; sandbox recovery; scheduling; safe user-settings lookup; platform-issue reporting; and Slack tools. Signed sandbox download/service helpers are included only when the run configuration enables them.
+## Main-agent surface
 
-The final list depends on trusted run context:
+For a normal run, `agent.server:get_agent` starts with web access, background execution, plan and user-preference tools, thread and baby-sit operations, PR and expedited-review actions, sandbox recovery, feedback and scheduling, safe settings lookup, and Slack operations. It adds signed sandbox download, iframe, and port-exposure helpers only for supported non-desktop LangSmith sandboxes. Expedited-review operations require non-local execution, a Slack bot token, and workspace enablement.
 
-- An `admin_thread` receives `ADMIN_TOOLS`: sandbox reset, automation management, environment management, and organization-skill mutations. The factory accepts the flag only after checking the triggering identity against the configured administrators, so metadata cannot transfer admin capability to a later participant.
-- A desktop `local_run` receives only `http_request`, `fetch_url`, and `web_search`. A `stop_summary` run initially receives only Slack thread reading and reply. In both cases, integration groups are not collected.
-- Slack operations are removed unless trusted Slack context enables them. This filtering occurs after the mode-specific list is chosen.
-- The general-purpose subagent gets the applicable static list except `background_execute` and `background_task`; separately compiled subagent graphs do not inherit parent middleware. Dynamic integration middleware is explicitly passed to it.
+`ADMIN_TOOLS` are added only when `actor_has_admin_context` confirms both an admin-stamped thread and a still-authorized actor (or an authorized scheduled invocation). They cover automation, workspace lifecycle and repository configuration, and organization-skill mutation. `read_only_sql` and review-approval policy management have the stronger private-admin-surface requirement.
 
-## Deferred integration tools
+The remaining major source and mode rules are:
 
-Eligible normal runs construct candidate groups for Observability, Currents, Notion, and browser tools; a configured Corridor group advertises its fixed allowlist and postpones its MCP connection. `DynamicToolMiddleware` presents one loader, `load_integration_tools`, with the catalog of group-qualified tool names rather than placing all operational schemas on the first model call.
+- A local desktop run exposes only `http_request`, `fetch_url`, and `web_search`; a stop-summary run exposes only `slack_read_thread_messages` and `slack_reply`.
+- Slack tools are removed without trusted Slack context. In a Slack DM, reactions are removed; in Slack ask mode, tools that require an existing thread are excluded. Automatic incident sessions append incident tools but exclude mutating, delegation, reply, and administrative capabilities unless explicitly requested.
+- `ExcludeToolsMiddleware` runs after Deep Agents injects built-ins, which lets the main graph hide `grep` in normal runs and additionally hide filesystem mutation, shell execution, delegation, and deletion in stop-summary mode.
+- The general-purpose subagent is compiled separately, so it receives explicit dynamic, workflow-push, model, and shell guard middleware. A tool-call guard rejects parent-only tools such as background execution, thread management, settings reads, and most Slack operations.
+
+## Deferred MCP and personal integrations
+
+Normal non-local, non-summary runs with a known credential scope collect two deferred groups: workspace MCP tools and personal Notion tools. MCP sources are loaded in instance, workspace, then user order, with a later same-named connection replacing an earlier one. The factory caches loading with a timeout and failure degrades to an empty tool list. `DynamicToolMiddleware` advertises only names through `load_integration_tools`; it does not disclose every tool schema on the initial model call.
 
 ```mermaid
 sequenceDiagram
     participant Model
-    participant Middleware as Dynamic tool middleware
-    participant Loader as Integration loader
-    participant Service as Integration or MCP service
+    participant Dynamic as Dynamic middleware
+    participant Loader as Group loader
+    participant Service as MCP service
 
-    Model->>Middleware: load_integration_tools with names
-    Middleware->>Loader: build requested groups
-    Loader->>Service: obtain credentials or MCP tools
-    Service-->>Loader: resolved tools or failure
-    Loader-->>Middleware: cached group result
-    Middleware-->>Model: schemas available next turn or error
-    Model->>Middleware: call loaded tool
-    Middleware-->>Model: dispatch resolved tool
+    Model->>Dynamic: load_integration_tools names
+    Dynamic->>Loader: resolve requested groups
+    Loader->>Service: obtain tools and credentials
+    Service-->>Loader: tools or failure
+    Loader-->>Dynamic: cached group result
+    Dynamic-->>Model: schemas on next turn or error
+    Model->>Dynamic: call loaded tool
+    Dynamic-->>Model: dispatch resolved tool
 ```
 
-This is the deferred loading path: a successful loader call updates run state, so the requested schema becomes available on the next model turn.
+The loader records selected names in run state, so a tool is injected on the next model turn only after it was explicitly loaded.
 
-Names must be unique across groups and must not collide with the loader, built-ins, or static tools. The middleware resets `loaded_integration_tools` at the start of each run. It uses one lock and one cached resolution per group; loading failures become an empty group and a tool error instructing the model to continue. Direct integration calls before loading receive the same kind of recoverable error.
+Dynamic names must be unique and cannot collide with `load_integration_tools`, built-ins, or static names. Each group has a lock and a once-only cached resolution, including failure. The middleware resets loaded names before a non-forked run; unknown, unloaded, or unavailable tools return recoverable error messages rather than failing the run.
 
-Integration loading is also a credential boundary. Corridor accepts only its configured HTTPS endpoint and allowlisted tool names, puts its bearer token on the server-side MCP connection, and degrades to no tools when configuration or the service fails. Notion schemas require an `on_behalf_of` thread participant; each invocation resolves that participant and refreshes that participant's token rather than retaining one in the sandbox. LangSmith tools similarly resolve a participant credential at call time, can use team credentials only where allowed, and are read-only. Observability availability is selected only for an explicitly authorized/admin triggering identity.
+Notion is deliberately personal and private-owner scoped. Stored tokens are encrypted; status APIs expose connection metadata rather than tokens. The initial MCP connection discovers schemas, but each wrapped Notion call requires `on_behalf_of`, resolves that participant, verifies it is the private credential owner, obtains a fresh access token, and reconstructs the MCP tool. If credentials, refresh, or loading fail, Notion tools are absent or the call explains that reconnection is needed.
 
-## Specialist surfaces
+## Sandbox and specialist surfaces
 
-| Graph | Curated tools and intent |
+The main agent uses a sandbox-backed Deep Agents graph. Sandbox helpers are conditional as above, while tool middleware protects operations that could bypass audited workflows:
+
+- `PullRequestCreationGuardMiddleware` intercepts `execute` and `background_execute` commands that create a PR via `gh pr create`, POSTs to GitHub's pulls endpoint, or `curl`. It returns a structured, non-recoverable error directing the agent to `open_pull_request`, preserving triggering-user attribution instead of allowing a shell fallback.
+- `WorkflowPushGuardMiddleware` recognizes constrained `git push origin` commands. When the sandbox diff includes `.github/workflows/` changes, it records a fingerprinted pending approval with a bounded diff preview, may notify the Slack thread, and blocks the push. Approval permits only the normalized exact push command; a changed workflow diff produces a different fingerprint and needs approval again.
+
+Specialist graph factories intentionally expose narrower surfaces:
+
+| Graph | Curated tool surface |
 | --- | --- |
-| Main | Context-dependent static tools, eligible dynamic groups, and applicable Deep Agents built-ins. |
-| Reviewer | `fetch_review_diff`; finding creation, update, listing, publication, resolution, and reply; plus `web_search`, `fetch_url`, and `http_request`. It does not receive `open_pull_request`. |
-| Analyzer | Only `save_review_style_prompt` and `read_finding_outcomes`, supporting repository review-style guidance. |
-| PR chat | `read_repo_file`, `search_repo_code`, `list_review_findings`, `web_search`, and `fetch_url`, with a read-only virtual-file surface. |
+| Reviewer | Review diff and finding lifecycle tools, plus `web_search`, `fetch_url`, and `http_request`; it does not wire `open_pull_request`. |
+| Analyzer | Only `save_review_style_prompt` and `read_finding_outcomes` for review-style guidance. |
+| PR chat | GitHub-backed `read_repo_file` and `search_repo_code`, review-findings lookup, and web read tools. It has no sandbox and excludes execute and filesystem writes; its subagent is similarly read-only. |
 
-PR chat intentionally has no sandbox. It excludes shell and write built-ins, and its delegated subagent allowlists only `read_file`, `ls`, `glob`, and `grep`. The chat preparation middleware acquires a repository-scoped GitHub App installation token for the GitHub-backed read tools; PR overview, diff, and findings are supplied as virtual `/pr/` files by the review-chat API.
+## Tool-side authorization
 
-## Tool-side authorization and safe responses
+Graph placement is a least-privilege measure, not an authorization substitute. `read_user_settings` obtains the private owner or verified thread participants from runtime context rather than caller arguments. It returns allowlisted profile settings, instructions, Notion connection status, and an unresolved-participant count, never credentials or connection tokens.
 
-Graph wiring is a convenience and least-privilege measure, not the sole authorization control. `read_user_settings` takes no caller-provided user, thread, or source identifier. It derives verified participants from runtime configuration and returns mapped profile settings, instructions, connection status metadata, and an unresolved count—never connection tokens or credentials.
+Automation tools recheck `require_admin` at invocation and use an authorized schedule record for scheduled runs. They wrap the schedule store with structured `{ok: false, error: ...}` outcomes. Creation records the verified identity; updates reject contradictory clear/set values while preserving omitted fields; triggering delegates to the schedule service. This repeated identity check protects the operation if graph construction or thread membership changes after the tool was offered.
 
-Automation operations repeat their authorization with `require_admin`, which checks the runtime identity. They wrap the dashboard schedule service and return structured `{ok: false, error: ...}` responses for authorization and service failures. Creation records the verified admin identity; update preserves omitted fields while rejecting simultaneous clear/set values for repository or Slack destination; test triggering is allowed for paused automations. The delete tool's contract requires user confirmation before permanent removal.
+## Extending safely
 
-This pattern is required for tools with sensitive side effects: validate trusted runtime identity and resource scope inside the tool, do not rely on model arguments or thread metadata, and turn anticipated operational failures into actionable tool results.
-
-## Plan mode is stateful tool gating
-
-Plan mode is a deliberately partial safety control, not simply a different prompt. `PlanModeMiddleware` is installed on every main graph and resets `plan_mode` to the run's configured initial value before execution; this prevents a persisted state from a previous run from silently affecting a later one. It recalculates the tool list on every model call, so an in-run `enter_plan_mode` command takes effect on the next turn.
-
-When active, `PLAN_MODE_EXCLUDED_TOOLS` removes side-effecting external and administrative tools: delegation, background execution, browser interaction, mutable HTTP requests, baby-sit and thread mutation, PR actions, sandbox reset/recreation, user skills, mutable Linear actions, Slack moves/new threads, environment mutation, and automation mutation. Read-only thread lookup, plan approval, and `read_file`, `write_file`, `edit_file`, and `execute` remain available. The latter filesystem and shell capabilities are constrained by planning instructions to plan artifacts outside cloned repositories, rather than being technically prevented from changing files; `task` is excluded precisely because its independent subagent would bypass the parent gate.
-
-## Safely extending a tool
-
-1. Implement an async tool in `agent/tools/`, map it in `_TOOL_MODULES`, and add its type-checking export.
-2. Wire it only into the graph(s) that need it. Decide whether desktop, stop-summary, Slack, admin-thread, or subagent filtering applies.
-3. Reserve the name against Deep Agents built-ins and static/dynamic integration names. For expensive or credentialed integrations, use an `IntegrationGroup` and make loading failure recoverable.
-4. Put authorization and scope checks at the tool boundary; derive actor and resource identity from trusted runtime context where possible. Keep secrets server-side and return redacted status/error data.
-5. Add focused behavior tests: catalog/graph composition and mode filtering, authorization denial, credential/scope handling, success and failure results, and plan-mode exclusion for each new mutation. Run only the relevant pytest target, as repository guidance requires.
+1. Add a curated tool and lazy export only when it is a reusable capability; then wire it deliberately into the needed graph factories.
+2. Specify source, identity, privacy, sandbox, local-run, summary, and subagent behavior before adding it to the normal surface. Reserve its name against static and dynamic tools.
+3. Use an `IntegrationGroup` for optional or expensive MCP capabilities. Loading must tolerate timeouts and service failures without terminating the run.
+4. Enforce authorization, actor/resource scope, and irreversible-action approval in the tool or middleware boundary. Never use a model argument as authority; keep credentials server-side and return redacted status or actionable errors.
+5. Add focused tests for composition and filtering, loader state and failure behavior, credential refresh/scope, authorization denial, and command guards. Existing coverage in `tests/middleware/test_dynamic_tools.py`, `tests/tools/test_notion_mcp_tools.py`, `tests/github/test_pr_creation_guard.py`, and `tests/agent/test_workflow_push_guard.py` illustrates these boundaries.
 
 ## Related pages
 
-- [Agent graph](../architecture/agent-graph.md) — graph factories and runtime assembly.
-- [Reviewer and analyzer](../architecture/reviewer-and-analyzer.md) — specialist graph responsibilities.
-- [Authorization and security](auth-and-security.md) — trust boundaries and credentials.
-- [Observability and MCP](../integrations/observability-and-mcp.md) — integration configuration.
-- [PR creation](../workflows/pr-creation.md) — PR workflow behavior.
+- [Agent graph](../architecture/agent-graph.md) — graph construction and runtime assembly.
+- [Middleware stack](../architecture/middleware-stack.md) — ordering and cross-cutting enforcement.
+- [Authorization and security](auth-and-security.md) — identity and credential trust boundaries.
+- [Observability and MCP](../integrations/observability-and-mcp.md) — MCP connection configuration.
+- [PR creation](../workflows/pr-creation.md) — attributed PR workflow behavior.

@@ -1,18 +1,16 @@
 ---
 type: integration reference
 title: Sandbox Provider Integration
-description: How Open SWE selects and operates sandbox providers, binds them safely to threads, and handles LangSmith-specific provisioning, credentials, and execution behavior. Covers provider capabilities, local and desktop exceptions, reviewer preparation, and the extension contract.
+description: How Open SWE selects, validates, and operates sandbox backends. Covers the provider factory contract, optional dependency loading, LangSmith provisioning and proxy integration, and safe thread binding.
 tags: [sandbox, integrations, providers, langsmith, configuration, extension]
 verified:
   - by: openwiki/0.4.2
-    at: 2026-09-08T08:15:30.533Z
+    at: 2026-09-24T08:16:16.200Z
 sources:
   - id: openwiki-source-328bde9e94017848bb09ba23
     resource: repo://agent/api/app.py
   - id: openwiki-source-b05c9910677cf23a9325276c
     resource: repo://agent/config.py
-  - id: openwiki-source-276ab38291eb5741b4c2141c
-    resource: repo://agent/reviewer.py
   - id: openwiki-source-6fd11c8bb15f5eb94b765440
     resource: repo://agent/sandboxes/lifecycle.py
   - id: openwiki-source-92118671e3d396d6804d8f9c
@@ -29,113 +27,93 @@ sources:
     resource: repo://agent/sandboxes/providers/registry.py
   - id: openwiki-source-c9c9a42cf879f76a6fb780f9
     resource: repo://agent/sandboxes/providers/runloop.py
-  - id: openwiki-source-d1484acd34e71448e75b9559
-    resource: repo://agent/sandboxes/read_only_backend.py
-  - id: openwiki-source-c2e0c61bef110853a29c63a8
-    resource: repo://agent/sandboxes/repo_prep.py
   - id: openwiki-source-267a662990890ab782a8bf32
     resource: repo://agent/sandboxes/retry.py
-  - id: openwiki-source-856ade03ef31ac38e1347f7c
-    resource: repo://agent/server.py
-  - id: openwiki-source-8010c6e64af5a375d8d3b70b
-    resource: repo://docs/CUSTOMIZATION.md
+  - id: openwiki-source-05ccef8d4cf1698187f20464
+    resource: repo://pyproject.toml
   - id: openwiki-source-7c557728721b38cad5fe3518
     resource: repo://tests/sandbox/test_langsmith_sandbox_config.py
   - id: openwiki-source-6c4c3340e6bc2f86a0e54411
     resource: repo://tests/sandbox/test_local_integration.py
-generated: { by: "openwiki/0.4.2", at: "2026-09-08T08:15:30.533Z" }
+  - id: openwiki-source-68ad90e24a41215f464ec35a
+    resource: repo://tests/sandbox/test_optional_provider_extras.py
+generated: { by: "openwiki/0.4.2", at: "2026-09-24T08:16:16.200Z" }
 ---
 
 # Sandbox Provider Integration
 
-Open SWE runs repository work through a `SandboxBackendProtocol`. Provider selection is operational configuration rather than an agent-graph change: `create_sandbox()` resolves the active provider, while the sandbox lifecycle owns the thread binding, safe reconnection, and replacement policy. See [sandbox lifecycle](../architecture/sandbox-lifecycle.md) for the broader thread lifecycle and [configuration](../operations/configuration.md) for environment variables.
+Open SWE executes repository work through `SandboxBackendProtocol`. Provider selection is deployment configuration, while the sandbox lifecycle owns a thread's persistent binding, initialization, and replacement policy. See [sandbox lifecycle](../architecture/sandbox-lifecycle.md) for the wider thread lifecycle and [configuration](../operations/configuration.md) for environment-variable reference.
 
-## Registry and startup validation
+## Selection, loading, and startup validation
 
-`SANDBOX_TYPE` defaults to `langsmith`. The registry supports `langsmith`, `daytona`, `modal`, `runloop`, `e2b`, and `local`, mapping each name to a module and factory name. The selected module is imported lazily, so unselected provider SDKs are not loaded. An unrecognized value raises `ValueError` and lists the supported types.
+`SANDBOX_TYPE` defaults to `langsmith`. The registry recognizes `langsmith`, `daytona`, `modal`, `runloop`, `e2b`, and `local`; an unknown value raises `ValueError` with the supported names. Each registry entry names a module and factory, and the module is imported only when selected.
 
-Every factory accepts `sandbox_id: str | None`: a supplied id reconnects and an omitted id creates. `create_sandbox()` passes snapshot, CPU, memory, filesystem, and arbitrary create-body options only to LangSmith; other providers receive only the id. LangSmith and Modal factories run natively async. Synchronous provider wrappers—Daytona, E2B, Runloop, and Local—run through `asyncio.to_thread`, keeping blocking SDK or filesystem setup off the event loop.
+Lazy import is distinct from runtime configuration. `daytona`, `modal`, `runloop`, and `e2b` SDKs are optional dependencies: the base installation contains the default LangSmith and Local providers. Selecting an optional provider without its SDK produces an actionable error naming `uv sync --extra sandbox-<provider>` (or `sandbox-providers`). Startup deliberately loads the selected optional provider early so this deployment error occurs before the first sandbox is requested. It does not treat an unrelated `ModuleNotFoundError` as a missing provider extra.
 
 ```mermaid
 flowchart TD
-    Request["Thread needs a sandbox"] --> Select["Read SANDBOX_TYPE"]
-    Select --> Lookup["Lazy-load registered factory"]
-    Lookup --> Known{"Provider known"}
-    Known -->|"no"| Invalid["ValueError with supported types"]
-    Known -->|"langsmith"| LS["Await factory with LangSmith options"]
-    Known -->|"async modal"| Modal["Await factory with id"]
-    Known -->|"sync provider"| Worker["Run factory in worker thread"]
-    LS --> Backend["SandboxBackendProtocol"]
-    Modal --> Backend
-    Worker --> Backend
-    Backend --> Bind["Lifecycle initializes then binds thread metadata"]
+    Select["Read SANDBOX_TYPE"] --> Registered{"Registered type"}
+    Registered -->|"no"| Invalid["ValueError with supported types"]
+    Registered -->|"yes"| Lazy["Lazy import factory module"]
+    Lazy --> Extra{"Optional SDK installed"}
+    Extra -->|"no"| Install["ValueError with uv sync hint"]
+    Extra -->|"yes"| Validate["Startup validates selected provider"]
+    Validate --> Runtime["Create or reconnect at runtime"]
+    Runtime --> LangSmith{"LangSmith selected"}
+    LangSmith -->|"yes"| Options["Pass snapshot resources and create fields"]
+    LangSmith -->|"no"| Identifier["Pass sandbox id only"]
+    Options --> Backend["SandboxBackendProtocol"]
+    Identifier --> Backend
 ```
-Provider resolution and the point at which a successfully initialized backend becomes eligible for thread binding.
+The selection path separates lazy optional-dependency loading and boot-time validation from runtime provider configuration and creation.
 
-The FastAPI lifespan hook calls `validate_sandbox_startup_config()` before serving. Validation is currently provider-specific only for LangSmith: configured resource and TTL values must be integers, the TTLs must be non-negative, and `SANDBOX_CREATE_EXTRA_JSON` must parse as a JSON object. Other provider credentials are checked when their factory is invoked.
+The FastAPI lifespan calls `validate_sandbox_startup_config()` before serving. For LangSmith, startup verifies that resource and TTL environment values are integers, TTLs are non-negative, and `SANDBOX_CREATE_EXTRA_JSON` is a JSON object. Credentials for the third-party factories are checked when the factory runs; loading their optional SDKs is the startup-time check.
 
-## Thread binding and failure semantics
+## Provider contract and registry dispatch
 
-`ensure_sandbox_for_thread()` first consults the in-memory backend proxy and thread metadata. It either reuses the cached backend, reconnects to the saved id, or creates one from the selected environment's ready snapshot and resource/create settings (falling back to the administrator base snapshot). It configures the bot Git identity on each use.
+A provider factory has the shape `create_<name>_sandbox(sandbox_id: str | None = None)` and returns a `SandboxBackendProtocol`. A supplied id means reconnect; omission means create. Register the factory as a `(module, function)` pair in `SANDBOX_FACTORIES`. Factories may be synchronous or native async: the registry awaits coroutine factories and runs synchronous factories in `asyncio.to_thread` so synchronous SDK setup and Local filesystem setup do not block the event loop.
 
-A missing LangSmith box is deliberately distinct from an unreachable box. `ResourceNotFoundError` becomes `SandboxGoneError`, so the lifecycle recreates the deleted box. Other reconnection failures become `SandboxUnreachableError` and normally stop the run rather than silently replacing the working tree with an empty sandbox. `allow_replacement=True` permits that trade-off for reviewer threads because their checkout is regenerated on every review run.
+`create_sandbox()` forwards `snapshot_id`, memory, vCPUs, filesystem capacity, and `create_params` only when `SANDBOX_TYPE=langsmith`. All other built-ins receive only the id, so adding provider-specific creation controls requires an explicit integration rather than assuming these generic arguments arrive.
 
-Initialization precedes persistence: the lifecycle updates thread metadata with `sandbox_id` only after creation, identity setup, and proxy work finish. It publishes the backend proxy last. Reset and recreate similarly require a distinct new id and retain the old binding until metadata persistence succeeds. This ordering prevents later work from adopting an incompletely initialized or unpersisted sandbox.
+| Provider | Create or reconnect behavior | Runtime configuration |
+|---|---|---|
+| `langsmith` | Async get/create and a timeout-aware backend wrapper | `LANGSMITH_API_KEY` and `LANGSMITH_ENDPOINT`; snapshot, resource, TTL, and JSON create-body controls |
+| `daytona` | Gets an id or creates from a snapshot | `DAYTONA_API_KEY`; `DAYTONA_SANDBOX_SNAPSHOT` defaults to `daytonaio/sandbox:0.6.0` |
+| `modal` | Reattaches by id or creates in an app | Modal credentials; `MODAL_APP_NAME` defaults to `open-swe` |
+| `runloop` | Retrieves an id or creates a devbox | `RUNLOOP_API_KEY` |
+| `e2b` | Connects by id or creates a sandbox | `E2B_API_KEY`, optional `E2B_TEMPLATE`, and a one-hour timeout |
+| `local` | Creates a host-backed `LocalShellBackend`; ids are ignored | Optional `LOCAL_SANDBOX_ROOT_DIR`, defaulting to the current directory |
 
-The provider interface intentionally has no delete operation. A sandbox can contain the agent's only working tree, and failed metadata reads can look like no sandbox; cleanup is instead a platform responsibility controlled by creation-time idle and delete-after-stop TTLs.
+The abstraction intentionally has no provider delete operation. A sandbox may be the only copy of an agent working tree, and metadata reads can fail open to “no sandbox”; LangSmith reclamation is instead controlled at creation through idle and delete-after-stop TTLs.
 
-## Provider capabilities
+## LangSmith provisioning and execution
 
-| Provider | Create or reconnect behavior | Credentials and configuration | Important limitation |
-|---|---|---|---|
-| `langsmith` | Async client creates or gets a box, then wraps its synchronous form | Sandbox-specific LangSmith key and endpoint; snapshots, resources, TTLs, extra create fields | The only selector-level snapshot/resource provider; reset and environment snapshot capture are LangSmith-only |
-| `daytona` | Gets an id or creates from a snapshot | `DAYTONA_API_KEY`; `DAYTONA_SANDBOX_SNAPSHOT` defaults to `daytonaio/sandbox:0.6.0` | Uses a synchronous SDK wrapper |
-| `modal` | Reattaches by id or creates in the configured app | Modal credentials; `MODAL_APP_NAME` defaults to `open-swe` | No selector-level resource or snapshot forwarding |
-| `runloop` | Retrieves an id or creates a devbox | `RUNLOOP_API_KEY` | Uses a synchronous SDK wrapper |
-| `e2b` | Connects by id or creates a sandbox | `E2B_API_KEY`; optional `E2B_TEMPLATE`; one-hour timeout | Uses a synchronous SDK wrapper |
-| `local` | Creates a host-backed `LocalShellBackend`; ignores ids | Optional `LOCAL_SANDBOX_ROOT_DIR`, defaulting to the current directory | No isolation; development only |
+LangSmith uses the application's `LANGSMITH_API_KEY` and `LANGSMITH_ENDPOINT`. The sandbox SDK endpoint is normalized to `/v2/sandboxes`; the same API-root resolution also supplies the service identity JWKS URL. Missing an API key prevents LangSmith provider construction and proxy configuration is skipped with a warning if no key is available.
 
-### LangSmith provisioning, resources, and create fields
+New LangSmith boxes use the requested snapshot; when it is absent the create request omits `snapshot_id`, causing the platform root snapshot to be used. Defaults are 4 vCPUs, 16 GiB memory, 128 GiB filesystem capacity, a two-hour idle TTL, and a 30-day delete-after-stop TTL. A memory or CPU override causes the other of those two values to remain `None`, rather than mixing a partial request override with a deployment default. Zero disables either TTL.
 
-Sandbox operations resolve credentials from `SANDBOX_LANGSMITH_API_KEY` and then `LANGSMITH_API_KEY`; the endpoint resolves from `SANDBOX_LANGSMITH_ENDPOINT`, then `LANGSMITH_ENDPOINT`, then `https://api.smith.langchain.com`. The integration normalizes the SDK endpoint to `/v2/sandboxes`, allowing sandbox operations to point to a distinct LangSmith workspace.
+`SANDBOX_CREATE_EXTRA_JSON` supplies a deployment-level JSON object, and call-specific `create_params` win on conflicts. Because the SDK lacks arbitrary create-field support, the provider temporarily wraps its HTTP transport and injects extras only into `POST /boxes`. LangSmith creation retries retryable status and transient creation failures up to three attempts.
 
-New boxes use `DEFAULT_SANDBOX_SNAPSHOT_ID` when set; when it is absent, the create request omits `snapshot_id` so the platform's root snapshot is used. Defaults are 4 vCPUs, 16 GiB memory, 128 GiB filesystem capacity, a two-hour idle TTL, and a 30-day delete-after-stop TTL. Setting either CPU or memory per call leaves the other as `None`, rather than mixing a partial override with the deployment default. Zero disables either TTL.
+`TimeoutLangSmithSandbox` supplies asynchronous command execution. With an effective timeout it starts a nonblocking command and waits for that timeout plus `SANDBOX_EXECUTE_CLIENT_GRACE_SECONDS` (30 seconds by default). Server-side timeout and client-deadline expiry both become exit-124 responses; client expiry also best-effort kills the command. Supported WebSocket setup or stream failures fall back to the base execution path. Command retries are restricted to `SandboxRetryableConnectionError`, which means a WebSocket upgrade failed before the execute frame was sent, and use at most four jittered exponential-backoff attempts to avoid double-running a command.
 
-`SANDBOX_CREATE_EXTRA_JSON` supplies deployment-level JSON object fields, and per-environment or per-call `create_params` override conflicting fields. The implementation sends recognized SDK fields normally and wraps the SDK HTTP `POST /boxes` call to inject unsupported fields into that create request only. Normal LangSmith creation retries up to three times for retryable statuses and transient creation error classes.
+## Thread binding, snapshots, and proxy access
 
-Environment snapshot capture and `reset_sandbox_for_thread()` require `SANDBOX_TYPE=langsmith`. Reset creates from an unfiltered create-body object, accepts SDK-supported and injected fields, reconfigures credentials and Git identity, and atomically hands the thread to the new id only after metadata persists.
+`ensure_sandbox_for_thread()` reads thread metadata and either reuses a cached backend, reconnects to its saved id, or creates a new backend. New creation resolves a workspace's ready snapshot, resource settings, and create parameters; without a workspace snapshot, the LangSmith provider uses its base snapshot. It reapplies the bot Git identity on creation and reuse.
 
-### LangSmith execution and egress credentials
+A LangSmith missing-box response becomes `SandboxGoneError`, which is recreated because the deleted box holds no working tree. Other reconnect or proxy-refresh failures become `SandboxUnreachableError`; normally they are not replaced because a new sandbox loses uncommitted work. Callers can set `allow_replacement=True` for reviewer work, whose checkout is re-derived.
 
-`TimeoutLangSmithSandbox` adapts the synchronous LangSmith object to the async agent use case. With an effective command timeout, it starts a non-blocking command, waits for the command timeout plus `SANDBOX_EXECUTE_CLIENT_GRACE_SECONDS` (30 seconds by default), and converts the result to `ExecuteResponse`. A server `CommandTimeoutError` returns exit code 124 without a kill; expiry of the client deadline triggers a best-effort kill and returns exit code 124. WebSocket setup or supported midstream failures fall back to the base HTTP-capable `aexecute()` path. With no effective timeout, it delegates directly to that base path.
+Creation finishes identity setup, LangSmith proxy configuration, and any workspace update script before the lifecycle writes the new id to thread metadata. It then provisions the tool URL and publishes the cached backend last. This ordering prevents later work from discovering a half-initialized backend. Recreation similarly demands a distinct id and persists the new metadata before swapping the cached backend.
 
-Only `SandboxRetryableConnectionError` is retried for command execution: it denotes a rejected WebSocket upgrade before the execute frame was sent, making a retry safe from double execution. Retries are capped at four attempts with jittered exponential backoff.
+For LangSmith only, creation and reuse mint a GitHub App installation token and update the sandbox proxy rather than writing the real token into the sandbox. The proxy injects Basic authorization for `github.com` and `*.github.com`, Bearer authorization for `api.github.com`, and a placeholder `GH_TOKEN` for the `gh` CLI. It preserves eligible caller-provided proxy rules and refreshes the token on reuse. If proxy configuration is rejected because the box is not ready, the provider best-effort starts it and retries the update. Non-LangSmith providers do not receive this proxy integration.
 
-For LangSmith thread creation and reuse, the lifecycle mints a GitHub App installation token at runtime and configures proxy rules. The proxy injects Basic authentication for `github.com` and `*.github.com`, and Bearer authentication plus a placeholder `GH_TOKEN` for `api.github.com`; the real token is not written into the sandbox. A not-ready proxy update starts the box best-effort and retries. Proxy configuration also preserves caller-provided rules, can inject connected user LangSmith credentials for HTTPS endpoints, and can add a supported Stagehand model rule. Non-LangSmith providers skip this integration.
+## Local-provider safety
 
-### Local and desktop exceptions
+`local` is a development-only escape hatch: it runs commands directly on the host with no isolation. It creates the root directory and supplies an explicit environment that excludes selected model, LangSmith, and OAuth-broker secrets (`inherit_env=False`). Unless `GIT_CONFIG_GLOBAL` is explicitly set, it writes a root-local `.gitconfig-sandbox` that includes the host config. This preserves aliases and credential helpers while keeping the lifecycle's bot identity writes out of the developer's `~/.gitconfig`.
 
-`local` executes directly on the host and must be used only for local development with human oversight. It creates the root directory, constructs an environment without selected model, LangSmith, and OAuth broker secrets, and uses `inherit_env=False`. Unless the operator explicitly provides `GIT_CONFIG_GLOBAL`, it writes a root-local `.gitconfig-sandbox` that includes the host configuration; this preserves aliases and helpers while preventing bot identity writes from overwriting the developer's `~/.gitconfig`.
+## Adding and verifying a provider
 
-Desktop is not a sandbox provider selection. In desktop runs, the main backend is the user project and the server composes read-only routes for bundled skills and state-backed user skills, with separate desktop artifact routes so agent scratch files do not land in the project. `ReadOnlyBackend` delegates async listing, read, grep, glob, and download operations while rejecting synchronous calls and exposes no mutation operations.
-
-## Reviewer repository preparation
-
-Reviewer sandboxes are reusable but their repository content is deliberately re-derived. Before the first model call, `prepare_review_repo()` clones or fetches the target repository, fetches the base and PR head (including the pull ref for fork PRs), force-checks out the expected head SHA, and verifies `HEAD`. It has a 240-second command timeout and returns `False` rather than failing the review when preparation cannot complete; the reviewer can still use fetched diff context.
-
-When preparation succeeds, `materialize_trusted_skills()` copies `.agents/skills` and `.claude/skills` from the PR base SHA—not the PR head—into a sibling `.review-skills` directory. This prevents a PR author from injecting new reviewer instructions through a changed `SKILL.md`.
-
-## Adding a provider
-
-Add a provider as a registry extension:
-
-1. Implement `agent/sandboxes/providers/<name>.py` with `create_<name>_sandbox(sandbox_id: str | None = None)`. It must reconnect when given an id, create otherwise, and return a `SandboxBackendProtocol`. A factory may be synchronous or `async def`.
-2. Add `"<name>": ("agent.sandboxes.providers.<name>", "create_<name>_sandbox")` to `SANDBOX_FACTORIES` in `agent/sandboxes/providers/registry.py`.
-3. Define credential validation and failure classification. In particular, do not mask a reconnect failure by returning an empty replacement: persistent working trees make unreachable and deleted states materially different.
-4. Test factory creation/reconnection and registry dispatch. Decide explicitly whether provider-specific capabilities such as reset, snapshots, resource overrides, proxy credential refresh, and browser tooling are unsupported or need an equivalent implementation.
-
-A custom backend can extend `deepagents.backends.sandbox.BaseSandbox`, whose file operations delegate to execution; the provider then supplies an `id` and shell execution implementation. Ensure the actual backend supports the async operations used by the agent lifecycle.
-
-## Focused verification
-
-`tests/sandbox/test_langsmith_sandbox_config.py` exercises endpoint and create-body behavior, default-root snapshot omission, validation, retry, and missing-box classification. `test_langsmith_sandbox_timeout.py` covers deadline, kill, server timeout, response conversion, fallback, and retry behavior. Provider-focused tests cover Daytona and E2B defaults plus Local root, environment, and Git-config isolation. Lifecycle tests cover safe recovery, reset/recreate handoff ordering, and reviewer replacement policy.
+1. Implement `agent/sandboxes/providers/<name>.py` with a create-or-reconnect factory returning `SandboxBackendProtocol`.
+2. Add the module/function pair to `SANDBOX_FACTORIES`. If its SDK is optional, add a dependency group and update the optional-SDK mapping so deployment failures remain actionable.
+3. Classify missing versus unreachable reconnect failures. Do not silently replace an unreachable persistent working tree.
+4. Decide whether snapshots, resource overrides, reset/recreation, proxy refresh, and browser or tool access are unsupported or need provider-specific equivalents.
+5. Test creation/reconnection and registry dispatch. `tests/sandbox/test_optional_provider_extras.py` covers missing-extra messages and early validation; LangSmith configuration, timeout, retry, proxy, recovery, recreation, and publish-ordering tests cover the safety-sensitive paths.
